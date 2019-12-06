@@ -41,7 +41,7 @@ public abstract class AIZombieState : AIState
 	{
 		if (stateMachine.GetType () == typeof(AIZombieStateMachine)) 
 		{
-
+			
 			base.SetStateMachine (stateMachine);
 			_zombieStateMachine = (AIZombieStateMachine)stateMachine;
 
@@ -61,7 +61,7 @@ public abstract class AIZombieState : AIState
 		// If we don't have a parent state machine then bail
 		if (_zombieStateMachine == null)
 			return;
-
+	
 		// We are not interested in exit events so only step in and process if its an
 		// enter or stay.
 		if (eventType != AITriggerEventType.Exit) 
@@ -77,7 +77,7 @@ public abstract class AIZombieState : AIState
 				// If the currently stored threat is not a player or if this player is closer than a player
 				// previously stored as the visual threat...this could be more important
 				if (curType != AITargetType.Visual_Player ||
-					(curType == AITargetType.Visual_Player && distance < _zombieStateMachine.VisualThreat.distance)) {
+				    (curType == AITargetType.Visual_Player && distance < _zombieStateMachine.VisualThreat.distance)) {
 					// Is the collider within our view cone and do we have line or sight
 					RaycastHit hitInfo;
 					if (ColliderIsVisible (other, out hitInfo, _playerLayerMask)) 
@@ -88,71 +88,72 @@ public abstract class AIZombieState : AIState
 				}
 			} 
 			else 
-				if (other.CompareTag ("Flash Light") && curType != AITargetType.Visual_Player) 
+			if (other.CompareTag ("Flash Light") && curType != AITargetType.Visual_Player) 
+			{
+
+				BoxCollider flashLightTrigger = (BoxCollider)other;
+				float distanceToThreat = Vector3.Distance (_zombieStateMachine.sensorPosition, flashLightTrigger.transform.position);
+				float zSize = flashLightTrigger.size.z * flashLightTrigger.transform.lossyScale.z;
+				float aggrFactor = distanceToThreat / zSize;
+				if (aggrFactor <= _zombieStateMachine.sight && aggrFactor <= _zombieStateMachine.intelligence) 
 				{
-					BoxCollider flashLightTrigger = (BoxCollider)other;
-					float distanceToThreat = Vector3.Distance (_zombieStateMachine.sensorPosition, flashLightTrigger.transform.position);
-					float zSize = flashLightTrigger.size.z * flashLightTrigger.transform.lossyScale.z;
-					float aggrFactor = distanceToThreat / zSize;
-					if (aggrFactor <= _zombieStateMachine.sight && aggrFactor <= _zombieStateMachine.intelligence) 
+					_zombieStateMachine.VisualThreat.Set ( AITargetType.Visual_Light, other, other.transform.position, distanceToThreat);
+				}
+			}
+			else
+			if (other.CompareTag ("AI Sound Emitter")) 
+			{
+				SphereCollider  soundTrigger = (SphereCollider) other;
+				if (soundTrigger==null) return;
+				
+				// Get the position of the Agent Sensor 
+				Vector3 agentSensorPosition 	= _zombieStateMachine.sensorPosition;
+
+				Vector3 soundPos;
+				float   soundRadius;
+				AIState.ConvertSphereColliderToWorldSpace( soundTrigger, out soundPos, out soundRadius ); 
+
+				// How far inside the sound's radius are we
+				float distanceToThreat = (soundPos - agentSensorPosition).magnitude; 
+
+				// Calculate a distance factor such that it is 1.0 when at sound radius 0 when at center
+				float distanceFactor   = (distanceToThreat / soundRadius);
+				
+				// Bias the factor based on hearing ability of Agent.
+				distanceFactor+=distanceFactor*(1.0f-_zombieStateMachine.hearing);
+				
+				// Too far away
+				if (distanceFactor > 1.0f)
+					return;
+						
+				// if We can hear it and is it closer then what we previously have stored
+				if (distanceToThreat<_zombieStateMachine.AudioThreat.distance)
+				{
+					// Most dangerous Audio Threat so far
+					_zombieStateMachine.AudioThreat.Set ( AITargetType.Audio, other, soundPos, distanceToThreat );
+				}
+			}
+			else
+			// Register the closest visual threat
+			if (other.CompareTag ("AI Food") &&	curType!=AITargetType.Visual_Player &&	curType!=AITargetType.Visual_Light &&
+				_zombieStateMachine.satisfaction<=0.9f && _zombieStateMachine.AudioThreat.type==AITargetType.None   )
+			{	
+				// How far away is the threat from us
+				float distanceToThreat = Vector3.Distance( other.transform.position, _zombieStateMachine.sensorPosition);
+
+				// Is this smaller then anything we have previous stored
+				if (distanceToThreat<_zombieStateMachine.VisualThreat.distance)
+				{
+					// If so then check that it is in our FOV and it is within the range of this
+					// AIs sight
+					RaycastHit hitInfo;
+					if ( ColliderIsVisible( other, out hitInfo, _visualLayerMask))
 					{
-						_zombieStateMachine.VisualThreat.Set ( AITargetType.Visual_Light, other, other.transform.position, distanceToThreat);
+						// Yep this is our most appealing target so far
+						_zombieStateMachine.VisualThreat.Set ( AITargetType.Visual_Food, other, other.transform.position, distanceToThreat );
 					}
 				}
-				else
-					if (other.CompareTag ("AI Sound Emitter")) 
-					{
-						SphereCollider  soundTrigger = (SphereCollider) other;
-						if (soundTrigger==null) return;
-
-						// Get the position of the Agent Sensor 
-						Vector3 agentSensorPosition 	= _zombieStateMachine.sensorPosition;
-
-						Vector3 soundPos;
-						float   soundRadius;
-						AIState.ConvertSphereColliderToWorldSpace( soundTrigger, out soundPos, out soundRadius ); 
-
-						// How far inside the sound's radius are we
-						float distanceToThreat = (soundPos - agentSensorPosition).magnitude; 
-
-						// Calculate a distance factor such that it is 1.0 when at sound radius 0 when at center
-						float distanceFactor   = (distanceToThreat / soundRadius);
-
-						// Bias the factor based on hearing ability of Agent.
-						distanceFactor+=distanceFactor*(1.0f-_zombieStateMachine.hearing);
-
-						// Too far away
-						if (distanceFactor > 1.0f)
-							return;
-
-						// if We can hear it and is it closer then what we previously have stored
-						if (distanceToThreat<_zombieStateMachine.AudioThreat.distance)
-						{
-							// Most dangerous Audio Threat so far
-							_zombieStateMachine.AudioThreat.Set ( AITargetType.Audio, other, soundPos, distanceToThreat );
-						}
-					}
-					else
-						// Register the closest visual threat
-						if (other.CompareTag ("AI Food") &&	curType!=AITargetType.Visual_Player &&	curType!=AITargetType.Visual_Light &&
-							_zombieStateMachine.satisfaction<=0.9f && _zombieStateMachine.AudioThreat.type==AITargetType.None   )
-						{	
-							// How far away is the threat from us
-							float distanceToThreat = Vector3.Distance( other.transform.position, _zombieStateMachine.sensorPosition);
-
-							// Is this smaller then anything we have previous stored
-							if (distanceToThreat<_zombieStateMachine.VisualThreat.distance)
-							{
-								// If so then check that it is in our FOV and it is within the range of this
-								// AIs sight
-								RaycastHit hitInfo;
-								if ( ColliderIsVisible( other, out hitInfo, _visualLayerMask))
-								{
-									// Yep this is our most appealing target so far
-									_zombieStateMachine.VisualThreat.Set ( AITargetType.Visual_Food, other, other.transform.position, distanceToThreat );
-								}
-							}
-						}
+			}
 
 		}
 	}

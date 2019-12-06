@@ -67,7 +67,7 @@ public abstract class AIState : MonoBehaviour
 
 		// Calculate world space radius of sphere
 		radius = Mathf.Max(	col.radius * col.transform.lossyScale.x,
-			col.radius * col.transform.lossyScale.y); 
+							col.radius * col.transform.lossyScale.y); 
 
 		radius = Mathf.Max( radius, col.radius * col.transform.lossyScale.z);
 	}

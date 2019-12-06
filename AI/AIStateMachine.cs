@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
+using UnityEngine.AI;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine.AI;
 
 // Public Enums of the AI System
 public enum AIStateType 		{ None, Idle, Alerted, Patrol, Attack, Feeding, Pursuit, Dead }
@@ -102,7 +102,7 @@ public abstract class AIStateMachine : MonoBehaviour
 		{
 			if (_sensorTrigger==null)	return 0.0f;
 			float radius = Mathf.Max(	_sensorTrigger.radius * _sensorTrigger.transform.lossyScale.x,
-				_sensorTrigger.radius * _sensorTrigger.transform.lossyScale.y); 
+										_sensorTrigger.radius * _sensorTrigger.transform.lossyScale.y); 
 
 			return Mathf.Max( radius, _sensorTrigger.radius * _sensorTrigger.transform.lossyScale.z);
 		}
@@ -160,7 +160,7 @@ public abstract class AIStateMachine : MonoBehaviour
 				script.parentStateMachine = this;
 			}
 		}
-
+			
 
 		// Fetch all states on this game object
 		AIState[] states = GetComponents<AIState>();
@@ -224,10 +224,10 @@ public abstract class AIStateMachine : MonoBehaviour
 
 			// This is our new target position
 			SetTarget (	AITargetType.Waypoint, 
-				null, 
-				newWaypoint.position, 
-				Vector3.Distance(newWaypoint.position , transform.position));
-
+						null, 
+						newWaypoint.position, 
+						Vector3.Distance(newWaypoint.position , transform.position));
+		
 			return newWaypoint.position;
 		}
 
@@ -371,12 +371,12 @@ public abstract class AIStateMachine : MonoBehaviour
 				_currentState = newState;
 			}
 			else
-				if (_states.TryGetValue( AIStateType.Idle , out newState))
-				{
-					_currentState.OnExitState();
-					newState.OnEnterState();
-					_currentState = newState;
-				}
+			if (_states.TryGetValue( AIStateType.Idle , out newState))
+			{
+				_currentState.OnExitState();
+				newState.OnEnterState();
+				_currentState = newState;
+			}
 
 			_currentStateType = newStateType;
 		}
